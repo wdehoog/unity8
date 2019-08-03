@@ -569,7 +569,7 @@ FocusScope {
                         if (item.stage == ApplicationInfoInterface.SideStage && !sideStage.shown) {
                             sideStage.show();
                         }
-                        item.playFocusAnimation();
+                        item.activate();
                     }
                 }
                 PropertyAction { target: spreadItem; property: "highlightedIndex"; value: -1 }
@@ -1077,8 +1077,7 @@ FocusScope {
                           && !greeter.fullyShown
                           && (priv.foregroundMaximizedAppDelegate === null || priv.foregroundMaximizedAppDelegate.normalZ <= z)
                          )
-                         || appDelegate.fullscreen
-                         || focusAnimation.running || rightEdgeFocusAnimation.running || hidingAnimation.running
+                         || appDelegate.fullscreen || hidingAnimation.running
 
                 function close() {
                     model.window.close();
@@ -1131,22 +1130,6 @@ FocusScope {
                     prevWindowState = windowState;
                 }
 
-                function playFocusAnimation() {
-                    if (state == "stagedRightEdge") {
-                        // TODO: Can we drop this if and find something that always works?
-                        if (root.mode == "staged") {
-                            rightEdgeFocusAnimation.targetX = 0
-                            rightEdgeFocusAnimation.start()
-                        } else if (root.mode == "stagedWithSideStage") {
-                            rightEdgeFocusAnimation.targetX = appDelegate.stage == ApplicationInfoInterface.SideStage ? sideStage.x : 0
-                            rightEdgeFocusAnimation.start()
-                        }
-                    } else if (state == "windowedRightEdge" || state == "windowed") {
-                        activate();
-                    } else {
-                        focusAnimation.start()
-                    }
-                }
                 function playHidingAnimation() {
                     if (state != "windowedRightEdge") {
                         hidingAnimation.start()
@@ -1172,30 +1155,6 @@ FocusScope {
                     }
                 }
 
-                UbuntuNumberAnimation {
-                    id: focusAnimation
-                    target: appDelegate
-                    property: "scale"
-                    from: 0.98
-                    to: 1
-                    duration: UbuntuAnimation.SnapDuration
-                    onStarted: {
-                        topLevelSurfaceList.raiseId(model.window.id);
-                    }
-                    onStopped: {
-                        appDelegate.activate();
-                    }
-                }
-                ParallelAnimation {
-                    id: rightEdgeFocusAnimation
-                    property int targetX: 0
-                    UbuntuNumberAnimation { target: appDelegate; properties: "x"; to: rightEdgeFocusAnimation.targetX; duration: priv.animationDuration }
-                    UbuntuNumberAnimation { target: decoratedWindow; properties: "angle"; to: 0; duration: priv.animationDuration }
-                    UbuntuNumberAnimation { target: decoratedWindow; properties: "itemScale"; to: 1; duration: priv.animationDuration }
-                    onStopped: {
-                        appDelegate.activate();
-                    }
-                }
                 ParallelAnimation {
                     id: hidingAnimation
                     UbuntuNumberAnimation { target: appDelegate; property: "opacity"; to: 0; duration: priv.animationDuration }
@@ -1290,7 +1249,7 @@ FocusScope {
                     },
                     State {
                         name: "stagedRightEdge"
-                        when: (root.mode == "staged" || root.mode == "stagedWithSideStage") && (root.state == "sideStagedRightEdge" || root.state == "stagedRightEdge" || rightEdgeFocusAnimation.running || hidingAnimation.running)
+                        when: (root.mode == "staged" || root.mode == "stagedWithSideStage") && (root.state == "sideStagedRightEdge" || root.state == "stagedRightEdge" || hidingAnimation.running)
                         PropertyChanges {
                             target: stagedRightEdgeMaths
                             progress: Math.max(rightEdgePushProgress, rightEdgeDragArea.draggedProgress)
@@ -1320,7 +1279,7 @@ FocusScope {
                     },
                     State {
                         name: "windowedRightEdge"
-                        when: root.mode == "windowed" && (root.state == "windowedRightEdge" || rightEdgeFocusAnimation.running || hidingAnimation.running || rightEdgePushProgress > 0)
+                        when: root.mode == "windowed" && (root.state == "windowedRightEdge" || hidingAnimation.running || rightEdgePushProgress > 0)
                         PropertyChanges {
                             target: windowedRightEdgeMaths
                             swipeProgress: rightEdgeDragArea.dragging ? rightEdgeDragArea.progress : 0
@@ -1371,7 +1330,7 @@ FocusScope {
                         }
                         PropertyChanges {
                             target: stageMaths
-                            animateX: !focusAnimation.running && itemIndex !== spreadItem.highlightedIndex
+                            animateX: itemIndex !== spreadItem.highlightedIndex
                         }
                         PropertyChanges {
                             target: appDelegate.window
@@ -1589,7 +1548,7 @@ FocusScope {
                     },
                     Transition {
                         from: "stagedRightEdge"; to: "staged"
-                        enabled: rightEdgeDragArea.cancelled // only transition back to state if the gesture was cancelled, in the other cases we play the focusAnimations.
+                        enabled: rightEdgeDragArea.cancelled // this moves the focused app back into position if the user decides not to go to the spread
                         SequentialAnimation {
                             ParallelAnimation {
                                 UbuntuNumberAnimation { target: appDelegate; properties: "x,y,height,width,scale"; duration: priv.animationDuration }
@@ -1985,13 +1944,6 @@ FocusScope {
         UbuntuNumberAnimation {id: snapAnimation; target: floatingFlickable; property: "contentX"}
     }
 
-    PropertyAnimation {
-        id: shortRightEdgeSwipeAnimation
-        property: "x"
-        to: 0
-        duration: priv.animationDuration
-    }
-
     SwipeArea {
         id: rightEdgeDragArea
         objectName: "rightEdgeDragArea"
@@ -2068,7 +2020,7 @@ FocusScope {
                                 break;
                             }
                         }
-                        appRepeater.itemAt(priv.nextInStack).playFocusAnimation()
+                        appRepeater.itemAt(priv.nextInStack).activate()
                         if (appRepeater.itemAt(priv.nextInStack).stage == ApplicationInfoInterface.SideStage && !sideStage.shown) {
                             sideStage.show();
                         }

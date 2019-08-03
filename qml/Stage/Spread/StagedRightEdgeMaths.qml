@@ -19,6 +19,7 @@ import Ubuntu.Components 1.3
 import Unity.Application 0.1
 import "MathUtils.js" as MathUtils
 
+// Logic which puts the Spread in position as the user drags it from the right edge
 QtObject {
     id: root
 
@@ -36,6 +37,7 @@ QtObject {
     property int targetHeight: 0
     property real startScale: 1.3
     property real targetScale: 0
+    // The distance at which we start to scale the windows down
     property real breakPoint: units.gu(15) / sceneWidth
 
     property bool isMainStageApp: false

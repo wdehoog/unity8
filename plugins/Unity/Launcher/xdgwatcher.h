@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2016 Canonical, Ltd.
+ * Copyright (C) 2019 UBports project.
+ * Author(s): Marius Gripsgard <marius@ubports.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,30 +15,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <QFileSystemWatcher>
 
-#include <unity/shell/launcher/AppDrawerModelInterface.h>
+class QFileInfo;
 
-#include "launcheritem.h"
-
-class UalWrapper;
-class XdgWatcher;
-
-class AppDrawerModel: public AppDrawerModelInterface
+class XdgWatcher: public QObject
 {
     Q_OBJECT
 public:
-    AppDrawerModel(QObject* parent = nullptr);
+    XdgWatcher(QObject* parent = nullptr);
+    static const QString stripAppIdVersion(const QString rawAppID);
 
-    int rowCount(const QModelIndex &parent) const override;
-    QVariant data(const QModelIndex &index, int role) const override;
-
-private Q_SLOTS:
+Q_SIGNALS:
     void appAdded(const QString &appId);
     void appRemoved(const QString &appId);
     void appInfoChanged(const QString &appId);
 
+private Q_SLOTS:
+    void onDirectoryChanged(const QString &path);
+    void onFileChanged(const QString &path);
+
 private:
-    QList<LauncherItem*> m_list;
-    UalWrapper *m_ual;
-    XdgWatcher *m_xdgWatcher;
+    const QString toStandardAppId(const QFileInfo fileInfo) const;
+    const QString toAppId(const QFileInfo file) const;
+
+    QFileSystemWatcher* m_watcher;
 };

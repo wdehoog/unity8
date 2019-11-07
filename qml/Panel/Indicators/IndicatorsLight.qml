@@ -28,6 +28,9 @@ QtObject {
     id: root
 
     property color color: "darkgreen"
+    property int onMillisec: 1000
+    property int offMillisec: 3000
+
     property string batteryIconName: Status.batteryIcon
     property string displayStatus: Powerd.status
 
@@ -48,32 +51,60 @@ QtObject {
             return
         }
 
+
         // priorities:
         //   unread messsages (highest), full&charging, charging, low   
-        var bColor = ""
-        if(_rootState.hasMessages) {
-            bColor = "darkgreen"
+        // Icons: (see device.s from indicator-power)
+        //   %s-low-symbolic               ?
+        //   %s-empty-symbolic             empty
+        //   %s-caution-charging-symbolic  charging  [ 0..10]
+        //   %s-low-charging-symbolic      charging  [10..30]
+        //   %s-good-charging-symbolic     charging  [30..60]
+        //   %s-full-symbolic              ?
+        //   %s-full-charging-symbolic     charging  [60..100]
+        //   %s-full-charged-symbolic      fully charged
+
+        var lColor = ""
+        var lOnMS = -1
+        var lOffMS = -1
+        if(_rootState.hasMessages) { 
+            // Unread Notifications
+            lColor  = "darkgreen"
+            lOnMS   = 1000
+            lOffMS  = 3000
+        } else if(batteryIconName.indexOf("full-charged") >= 0) {
+            // Battery Full
+            lColor  = "green"
+            lOnMS   = 1000
+            lOffMS  = 0
         } else if(batteryIconName.indexOf("charging") >= 0) {
-            if(batteryIconName.indexOf("full") >= 0) {
-                bColor = "green"
-            } else {
-                bColor = "white"
-            }
-        } else {
-          if(batteryIconName.indexOf("low") >= 0
-             || batteryIconName.indexOf("caution") >= 0) {
-                bColor = "orange"
-          }
+            // Battery Charging
+            lColor  = "white"
+            lOnMS   = 1000
+            lOffMS  = 0
+        } else if(batteryIconName.indexOf("low") >= 0
+                  || batteryIconName.indexOf("empty") >= 0) {
+            // Battery Low
+            lColor  = "orange"
+            lOnMS   = 500
+            lOffMS  = 3000
         }
 
-        console.log(" bColor=" + bColor)
-        if(bColor.length > 0) {
-            root.color = bColor
+        console.log("  color=" + lColor + ", onMS=" + lOnMS + ", offMS=" + lOffMS)
+        if(lOnMS > -1) {
+            root.onMillisec = lOnMS
+        }
+        if(lOffMS > -1) {
+            root.offMillisec = lOffMS
+        }
+        if(lColor.length > 0) {
+            root.color = lColor
             Lights.state = Lights.On
         } else
             Lights.state = Lights.Off
     }
 
+    // hasMessages is determined by checking for a specific icon in a dbus signal
     property var _actionGroup: QMenuModel.QDBusActionGroup {
         busType: 1
         busName: "com.canonical.indicator.messages"
@@ -90,18 +121,21 @@ QtObject {
 
     Component.onDestruction: Lights.state = Lights.Off
 
-    // QtObject does not have children
-    /*property var _binding: Binding {
-        target: Lights
-        property: "state"
-        value: {
-            return (Powerd.status === Powerd.Off && _rootState.hasMessages) ? Lights.On : Lights.Off
-        }
-    }*/
-
     property var _colorBinding: Binding {
         target: Lights
         property: "color"
         value: root.color
+    }
+
+    property var _onMillisecBinding: Binding {
+        target: Lights
+        property: "onMillisec"
+        value: root.onMillisec
+    }
+
+    property var _offMillisecBinding: Binding {
+        target: Lights
+        property: "offMillisec"
+        value: root.offMillisec
     }
 }

@@ -31,6 +31,9 @@ QtObject {
     property int onMillisec: 1000
     property int offMillisec: 3000
 
+    property double batteryLevel: 0
+    property string deviceState: ""
+
     property string batteryIconName: Status.batteryIcon
     property string displayStatus: Powerd.status
 
@@ -43,7 +46,7 @@ QtObject {
     }
 
     function updateLightState(msg) {
-        console.log("updateLightState: " + msg + ", icon: " + batteryIconName)
+        console.log("updateLightState: " + msg + ", icon: " + batteryIconName + ", displayStatus: " + displayStatus + ", deviceState: " + deviceState + ", batteryLevel: " + batteryLevel)
         // only show led when display is off
         if(displayStatus == Powerd.On) {
             console.log(" display == On")
@@ -54,6 +57,7 @@ QtObject {
 
         // priorities:
         //   unread messsages (highest), full&charging, charging, low   
+        // 
         // Icons: (see device.s from indicator-power)
         //   %s-low-symbolic               ?
         //   %s-empty-symbolic             empty
@@ -63,25 +67,43 @@ QtObject {
         //   %s-full-symbolic              ?
         //   %s-full-charging-symbolic     charging  [60..100]
         //   %s-full-charged-symbolic      fully charged
+        //
+        // device-state: (see system-settings\plugins\battery)
+        //   fully-charged
+        //   charging
+        //   discharging
+        //   
+        // Notes:
+        //   icon name 'full-charged' comes really late so also 
+        //   check device-state and battery-level
 
         var lColor = ""
         var lOnMS = -1
         var lOffMS = -1
+
+        var charging = batteryIconName.indexOf("charging") >= 0
+        if(!charging)
+            charging = deviceState != "discharging"
+
         if(_rootState.hasMessages) { 
             // Unread Notifications
             lColor  = "darkgreen"
             lOnMS   = 1000
             lOffMS  = 3000
-        } else if(batteryIconName.indexOf("full-charged") >= 0) {
-            // Battery Full
-            lColor  = "green"
-            lOnMS   = 1000
-            lOffMS  = 0
-        } else if(batteryIconName.indexOf("charging") >= 0) {
-            // Battery Charging
-            lColor  = "white"
-            lOnMS   = 1000
-            lOffMS  = 0
+        } else if(charging) {
+            if(batteryIconName.indexOf("full-charged") >= 0
+               || deviceState == "fully-charged"
+               || batteryLevel >= 100) { 
+                // Battery Full
+                lColor  = "green"
+                lOnMS   = 1000
+                lOffMS  = 0
+            } else {
+                // Battery Charging
+                lColor  = "white"
+                lOnMS   = 1000
+                lOffMS  = 0
+            }
         } else if(batteryIconName.indexOf("low") >= 0
                   || batteryIconName.indexOf("empty") >= 0) {
             // Battery Low
@@ -117,6 +139,26 @@ QtObject {
         Component.onCompleted: actionGroup.start()
 
         property bool hasMessages: valid && (String(icons).indexOf("indicator-messages-new") != -1)
+    }
+
+    // from system-settings plugins\battery
+    property var _ipag: QMenuModel.QDBusActionGroup {
+        //id: indicatorPower
+        busType: 1
+        busName: "com.canonical.indicator.power"
+        objectPath: "/com/canonical/indicator/power"
+        //property variant brightness: action("brightness").state
+        property variant batteryLevel: action("battery-level").state
+        property variant deviceState: action("device-state").state
+        Component.onCompleted: start()
+        onBatteryLevelChanged: {
+            root.batteryLevel = batteryLevel
+            updateLightState("onBatteryIconNameChanged")
+        }
+        onDeviceStateChanged: {
+            root.deviceState = deviceState
+            updateLightState("onDeviceStateChanged")
+        }
     }
 
     Component.onDestruction: Lights.state = Lights.Off

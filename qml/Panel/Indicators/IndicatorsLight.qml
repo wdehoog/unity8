@@ -33,6 +33,7 @@ QtObject {
 
     property double batteryLevel: 0
     property string deviceState: ""
+    property bool hasMessages: false
 
     property string batteryIconName: Status.batteryIcon
     property string displayStatus: Powerd.status
@@ -46,7 +47,10 @@ QtObject {
     }
 
     function updateLightState(msg) {
-        console.log("updateLightState: " + msg + ", icon: " + batteryIconName + ", displayStatus: " + displayStatus + ", deviceState: " + deviceState + ", batteryLevel: " + batteryLevel)
+        console.log("updateLightState: " + msg + ", hasMessages: " + hasMessages + ", icon: " 
+            + batteryIconName + ", displayStatus: " + displayStatus + ", deviceState: " 
+            + deviceState + ", batteryLevel: " + batteryLevel)
+
         // only show led when display is off
         if(displayStatus == Powerd.On) {
             Lights.state = Lights.Off
@@ -84,7 +88,7 @@ QtObject {
         if(!isCharging)
             isCharging = deviceState != "discharging"
 
-        if(_rootState.hasMessages) { 
+        if(hasMessages) { 
             // Unread Notifications
             lColor  = "darkgreen"
             lOnMS   = 1000
@@ -120,6 +124,8 @@ QtObject {
         }
         if(lColor.length > 0) {
             root.color = lColor
+            // HACK: led is only updated after turn on so first turn off
+            Lights.state = Lights.Off
             Lights.state = Lights.On
         } else
             Lights.state = Lights.Off
@@ -136,8 +142,11 @@ QtObject {
         actionGroup: _actionGroup
         actionName: "messages"
         Component.onCompleted: actionGroup.start()
-
         property bool hasMessages: valid && (String(icons).indexOf("indicator-messages-new") != -1)
+        onHasMessagesChanged: {
+            root.hasMessages = hasMessages
+            updateLightState("onHasMessagesChanged")
+        }
     }
 
     // Charging state and battery level are determined by listening to dbus signals from upower.

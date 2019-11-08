@@ -49,7 +49,6 @@ QtObject {
         console.log("updateLightState: " + msg + ", icon: " + batteryIconName + ", displayStatus: " + displayStatus + ", deviceState: " + deviceState + ", batteryLevel: " + batteryLevel)
         // only show led when display is off
         if(displayStatus == Powerd.On) {
-            console.log(" display == On")
             Lights.state = Lights.Off
             return
         }
@@ -81,16 +80,16 @@ QtObject {
         var lOnMS = -1
         var lOffMS = -1
 
-        var charging = batteryIconName.indexOf("charging") >= 0
-        if(!charging)
-            charging = deviceState != "discharging"
+        var isCharging = batteryIconName.indexOf("charging") >= 0
+        if(!isCharging)
+            isCharging = deviceState != "discharging"
 
         if(_rootState.hasMessages) { 
             // Unread Notifications
             lColor  = "darkgreen"
             lOnMS   = 1000
             lOffMS  = 3000
-        } else if(charging) {
+        } else if(isCharging) {
             if(batteryIconName.indexOf("full-charged") >= 0
                || deviceState == "fully-charged"
                || batteryLevel >= 100) { 
@@ -126,7 +125,7 @@ QtObject {
             Lights.state = Lights.Off
     }
 
-    // hasMessages is determined by checking for a specific icon in a dbus signal
+    // Existence of unread notifications is determined by checking for a specific icon name in a dbus signal.
     property var _actionGroup: QMenuModel.QDBusActionGroup {
         busType: 1
         busName: "com.canonical.indicator.messages"
@@ -141,19 +140,18 @@ QtObject {
         property bool hasMessages: valid && (String(icons).indexOf("indicator-messages-new") != -1)
     }
 
-    // from system-settings plugins\battery
+    // Charging state and battery level are determined by listening to dbus signals from upower.
+    // See also system-settings battery plugin.
     property var _ipag: QMenuModel.QDBusActionGroup {
-        //id: indicatorPower
         busType: 1
         busName: "com.canonical.indicator.power"
         objectPath: "/com/canonical/indicator/power"
-        //property variant brightness: action("brightness").state
         property variant batteryLevel: action("battery-level").state
         property variant deviceState: action("device-state").state
         Component.onCompleted: start()
         onBatteryLevelChanged: {
             root.batteryLevel = batteryLevel
-            updateLightState("onBatteryIconNameChanged")
+            updateLightState("onBatteryLevelChanged")
         }
         onDeviceStateChanged: {
             root.deviceState = deviceState

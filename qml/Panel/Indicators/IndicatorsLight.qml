@@ -58,28 +58,38 @@ QtObject {
             return
         }
 
-
+        //
         // priorities:
         //   unread messsages (highest), full&charging, charging, low   
         // 
         // Icons: (see device.s from indicator-power)
-        //   %s-low-symbolic               ?
         //   %s-empty-symbolic             empty
-        //   %s-caution-charging-symbolic  charging  [ 0..10]
-        //   %s-low-charging-symbolic      charging  [10..30]
-        //   %s-good-charging-symbolic     charging  [30..60]
-        //   %s-full-symbolic              ?
+        //   %s-caution-charging-symbolic  charging  [ 0..10)
+        //   %s-low-charging-symbolic      charging  [10..30)
+        //   %s-good-charging-symbolic     charging  [30..60)
         //   %s-full-charging-symbolic     charging  [60..100]
         //   %s-full-charged-symbolic      fully charged
+        //   %s-low-symbolic               ?
+        //   %s-full-symbolic              ?
         //
         // device-state: (see system-settings\plugins\battery)
         //   fully-charged
         //   charging
         //   discharging
-        //   
+        //
+        // Indicators:
+        //   unread notifications : darkgreen pulsing (1000/3000)
+        //   charging             : white continuously
+        //   battery full         : green  continuously
+        //   battery low          : orangered pulsing (500/3000)
+        //
         // Notes:
-        //   icon name 'full-charged' comes really late so also 
-        //   check device-state and battery-level
+        //   Icon name 'full-charged' comes late (45m after 100%)
+        //   so also check device-state and battery-level
+        //
+        //   Battery low warning dialog on screen shows up at 10%
+        //   but 'caution' icon at 9%.
+        // 
 
         var lColor = ""
         var lOnMS = -1
@@ -108,10 +118,10 @@ QtObject {
                 lOnMS   = 1000
                 lOffMS  = 0
             }
-        } else if(batteryIconName.indexOf("low") >= 0
+        } else if(batteryIconName.indexOf("caution") >= 0
                   || batteryIconName.indexOf("empty") >= 0) {
             // Battery Low
-            lColor  = "orange"
+            lColor  = "orangered"
             lOnMS   = 500
             lOffMS  = 3000
         }

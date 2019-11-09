@@ -39,6 +39,8 @@ QtObject {
     property string batteryIconName: Status.batteryIcon
     property string displayStatus: Powerd.status
 
+    property string indicatorState: "INDICATOR_OFF"
+
     onDisplayStatusChanged: {
         updateLightState("onDisplayStatusChanged")
     }
@@ -51,16 +53,22 @@ QtObject {
         console.log("updateLightState: " + msg + ", hasMessages: " + hasMessages + ", icon: " 
             + batteryIconName + ", displayStatus: " + displayStatus + ", deviceState: " 
             + deviceState + ", batteryLevel: " + batteryLevel)
+        console.log("                  indicatorState: " + indicatorState +", color: " + color + ", onMillisec: " + onMillisec + ", offMillisec: " + offMillisec); 
 
         // only show led when display is off
-        if(displayStatus == Powerd.On) {
-            Lights.state = Lights.Off
+        if (displayStatus == Powerd.On) {
+            indicatorState = "INDICATOR_OFF" 
+            return
+        }
+
+        // unread messsages has highest priority
+        if (hasMessages) { 
+            indicatorState = "HAS_MESSAGES"
             return
         }
 
         //
-        // priorities:
-        //   unread messsages (highest), full&charging, charging, low   
+        // Battery info
         // 
         // Icons: (see device.s from indicator-power)
         //   %s-empty-symbolic             empty
@@ -91,55 +99,73 @@ QtObject {
         //   but 'caution' icon at 9%.
         // 
 
-        var lColor = ""
-        var lOnMS = -1
-        var lOffMS = -1
+        //
+        // Show full only when charging
+        // Show low only when not charging
+        //
 
-        var isCharging = batteryIconName.indexOf("charging") >= 0
-        if(!isCharging)
-            isCharging = deviceState != "discharging"
+        var isCharging = batteryIconName.indexOf("charging") >= 0 
+                         || (deviceState != "discharging")
 
-        if(hasMessages) { 
-            // Unread Notifications
-            lColor  = "darkgreen"
-            lOnMS   = 1000
-            lOffMS  = 3000
-        } else if(isCharging) {
-            if(batteryIconName.indexOf("full-charged") >= 0
-               || deviceState == "fully-charged"
-               || batteryLevel >= 100) { 
-                // Battery Full
-                lColor  = "green"
-                lOnMS   = 1000
-                lOffMS  = 0
-            } else {
-                // Battery Charging
-                lColor  = "white"
-                lOnMS   = 1000
-                lOffMS  = 0
+        var isFull = isCharging
+                     && (batteryIconName.indexOf("full-charged") >= 0
+                         || deviceState == "fully-charged"
+                         || batteryLevel >= 100)
+
+        var isLow = !isCharging
+                    && (batteryIconName.indexOf("caution") >= 0
+                        || batteryIconName.indexOf("empty") >= 0)
+ 
+        if (isFull)
+            indicatorState = "BATTERY_FULL"
+        else if (isCharging)
+            indicatorState = "BATTERY_CHARGING"
+        else if (isLow)
+            indicatorState = "BATTERY_LOW"
+        else
+            indicatorState = "INDICATOR_OFF"
+
+    }
+
+    property var _stateGroup: StateGroup {
+        id: stateGroup
+        state: root.indicatorState
+        states: [
+            State {
+                name: "INDICATOR_OFF"
+                ScriptAction { script: updateLedForState(state); } 
+            },
+            State {
+                name: "HAS_MESSAGES"
+                PropertyChanges { target: root; color: "darkgreen"; onMillisec: 1000; offMillisec: 3000; }
+                ScriptAction { script: updateLedForState(state); } 
+            },
+            State {
+                name: "BATTERY_FULL"
+                PropertyChanges { target: root; color: "green"; onMillisec: 1000; offMillisec: 0; }
+                ScriptAction { script: updateLedForState(state); } 
+            },
+            State {
+                name: "BATTERY_CHARGING"
+                PropertyChanges { target: root; color: "white"; onMillisec: 1000; offMillisec: 0; }
+                ScriptAction { script: updateLedForState(state); } 
+            },
+            State {
+                name: "BATTERY_LOW"
+                PropertyChanges { target: root; color: "orangered"; onMillisec: 500; offMillisec: 3000; }
+                ScriptAction { script: updateLedForState(state); } 
             }
-        } else if(batteryIconName.indexOf("caution") >= 0
-                  || batteryIconName.indexOf("empty") >= 0) {
-            // Battery Low
-            lColor  = "orangered"
-            lOnMS   = 500
-            lOffMS  = 3000
+        ]
+        onStateChanged: {
+            console.log("onStateChanged: " + state)
         }
+    }
 
-        console.log("  color=" + lColor + ", onMS=" + lOnMS + ", offMS=" + lOffMS)
-        if(lOnMS > -1) {
-            root.onMillisec = lOnMS
-        }
-        if(lOffMS > -1) {
-            root.offMillisec = lOffMS
-        }
-        if(lColor.length > 0) {
-            root.color = lColor
-            // HACK: led is only updated after turn on so first turn off
-            Lights.state = Lights.Off
-            Lights.state = Lights.On
-        } else
-            Lights.state = Lights.Off
+    function updateLedForState(state) {
+        console.log("updateLightState: " + state)
+        Lights.state = Lights.Off
+        if (state != "INDICATOR_OFF")
+          Lights.state = Lights.On
     }
 
     // Existence of unread notifications is determined by checking for a specific icon name in a dbus signal.

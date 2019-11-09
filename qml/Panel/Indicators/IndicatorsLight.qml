@@ -133,27 +133,27 @@ QtObject {
         states: [
             State {
                 name: "INDICATOR_OFF"
-                ScriptAction { script: updateLedForState(state); } 
+                StateChangeScript { script: updateLedForState(); } 
             },
             State {
                 name: "HAS_MESSAGES"
                 PropertyChanges { target: root; color: "darkgreen"; onMillisec: 1000; offMillisec: 3000; }
-                ScriptAction { script: updateLedForState(state); } 
+                StateChangeScript { script: updateLedForState(); } 
             },
             State {
                 name: "BATTERY_FULL"
                 PropertyChanges { target: root; color: "green"; onMillisec: 1000; offMillisec: 0; }
-                ScriptAction { script: updateLedForState(state); } 
+                StateChangeScript { script: updateLedForState(); } 
             },
             State {
                 name: "BATTERY_CHARGING"
                 PropertyChanges { target: root; color: "white"; onMillisec: 1000; offMillisec: 0; }
-                ScriptAction { script: updateLedForState(state); } 
+                StateChangeScript { script: updateLedForState(); } 
             },
             State {
                 name: "BATTERY_LOW"
                 PropertyChanges { target: root; color: "orangered"; onMillisec: 500; offMillisec: 3000; }
-                ScriptAction { script: updateLedForState(state); } 
+                StateChangeScript { script: updateLedForState(); } 
             }
         ]
         onStateChanged: {
@@ -161,10 +161,10 @@ QtObject {
         }
     }
 
-    function updateLedForState(state) {
-        console.log("updateLightState: " + state)
+    function updateLedForState() {
+        console.log("updateLedForState: " + indicatorState)
         Lights.state = Lights.Off
-        if (state != "INDICATOR_OFF")
+        if (indicatorState != "INDICATOR_OFF")
           Lights.state = Lights.On
     }
 

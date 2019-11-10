@@ -61,7 +61,7 @@ QtObject {
             return
         }
 
-        // unread messsages has highest priority
+        // unread messsages have highest priority
         if (hasMessages) { 
             indicatorState = "HAS_MESSAGES"
             return
@@ -158,11 +158,13 @@ QtObject {
         ]
         onStateChanged: {
             console.log("onStateChanged: " + state)
+            console.log("         color: " + color + ", onMillisec: " + onMillisec + ", offMillisec: " + offMillisec); 
         }
     }
 
     function updateLedForState() {
         console.log("updateLedForState: " + indicatorState)
+        console.log("            color: " + color + ", onMillisec: " + onMillisec + ", offMillisec: " + offMillisec); 
         Lights.state = Lights.Off
         if (indicatorState != "INDICATOR_OFF")
           Lights.state = Lights.On
